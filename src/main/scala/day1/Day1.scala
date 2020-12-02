@@ -1,5 +1,7 @@
 package day1
 
+import util.Util.report
+
 import cats.effect._
 import scala.io.Source
 import cats._
@@ -29,17 +31,6 @@ object Day1 {
             .getLines()
             .map(_.toInt)
             .toSeq
-    }
-
-    def report: Option[Int] => IO[ExitCode] = {
-        case None => IO {
-            println("Error")
-            ExitCode.Error
-        }
-        case Some(result) => IO { 
-            println(result)
-            ExitCode.Success 
-        }
     }
 }
 
