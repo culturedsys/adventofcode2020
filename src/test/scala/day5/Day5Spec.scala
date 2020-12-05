@@ -11,15 +11,15 @@ class Day5Spec extends AnyFlatSpec with Matchers {
     }
 
     "parse" should "correctly parse example" in {
-        parse("FBFBBFFRLR") shouldBe Some((Seq(Lower, Upper, Lower, Upper, Upper, Lower, Lower), Seq(Upper, Lower, Upper)))
+        parse("FBFBBFFRLR") shouldBe Some((Seq(Lower, Upper, Lower, Upper, Upper, Lower, Lower, Upper, Lower, Upper)))
     }
 
     "largestSeatId" should "give the correct answer for example" in {
-        largestSeatId(Seq(
+        calculateSeatIds(Seq(
             "BFFFBBFRRR",
             "FFFBBBFRRR",
             "BBFFBBFRLL"
-        ).iterator) shouldBe Some(820)
+        ).iterator).flatMap(largestSeatId) shouldBe Some(820)
     }
 }
 

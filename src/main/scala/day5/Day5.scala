@@ -24,32 +24,33 @@ object Day5 {
     def parseHalf(lower: Char, upper: Char) = 
         (c: Char) => if (c == lower) Some(Lower) else if (c == upper) Some(Upper) else None
 
-    def parse(input: String): Option[(Seq[Half], Seq[Half])] = input.splitAt(7) match {
-        case (row, seat) => 
-            (
+    def parse(input: String): Option[Seq[Half]] = input.splitAt(7) match {
+        case (row, seat) => (
                 row.toList.traverse(parseHalf('F', 'B')), 
                 seat.toList.traverse(parseHalf('L', 'R'))
-            ).mapN(new Tuple2(_, _))
+            ).mapN(_ ++ _)
     }
 
-    def calculateSeatIds(seatNumbers: Iterator[String]) = seatNumbers.map(parse).map( _.map { 
-        case (rowSeq, colSeq) => binaryPartition(rowSeq, 0 until 128) * 8 +  binaryPartition(colSeq, 0 until 8)
-    })
+    def numberToId(number: Seq[Half]) = number.foldLeft(0) {
+        case (acc, Lower) => acc * 2
+        case (acc, Upper) => acc * 2 + 1
+    }
 
-    def largestSeatId(seatNumbers: Iterator[String]) = 
-        calculateSeatIds(seatNumbers).max
+    def calculateSeatIds(seatNumbers: Iterator[String]): Option[Seq[Int]] = for {
+        numbers <- seatNumbers.toSeq.traverse(parse)
+    } yield numbers.map(numberToId)
+    
+    def largestSeatId(seatNumbers: Seq[Int]): Option[Int] = 
+        seatNumbers.maxOption
 
-    def missingSeatId(seatNumbers: Iterator[String]) = {
+    def missingSeatId(seatNumbers: Seq[Int]): Option[Int] = {
         def go(previous: Int, ns: Seq[Int]): Option[Int] = ns match {
             case Seq() => None
             case head +: tail => if (head - previous > 1) Some(previous + 1) else go(head, tail)
         }
 
-        for {
-            ids <- calculateSeatIds(seatNumbers).toSeq.sequence.map(_.sorted)
-            head <- ids.headOption
-            result <- go(head, ids.tail)
-        } yield result
+        val ids = seatNumbers.sorted
+        ids.headOption.flatMap(go(_, ids.tail))
     } 
 
     def readInput = IO {
@@ -62,7 +63,7 @@ object Part1 extends IOApp {
 
     override def run(args: List[String]): IO[ExitCode] = for {
         input <- readInput
-        result = largestSeatId(input)
+        result = calculateSeatIds(input).map(largestSeatId)
         exitcode <- Util.report(result)
     } yield exitcode
 }
@@ -72,7 +73,7 @@ object Part2 extends IOApp {
 
     override def run(args: List[String]): IO[ExitCode] = for {
         input <- readInput
-        result = missingSeatId(input)
+        result = calculateSeatIds(input).map(missingSeatId)
         exitcode <- Util.report(result)
     } yield exitcode
 }
