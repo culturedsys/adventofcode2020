@@ -32,23 +32,7 @@ final case class Missing(name: String) extends ValidationError
 final case class Invalid(name: String, message: String) extends ValidationError
 
 object Day4 {
-    def splitIf[T](pred: T => Boolean, source: Iterator[T]): Seq[Seq[T]] = {
-        def go(result: Seq[Seq[T]], partial: Seq[T], remaining: Seq[T]): Seq[Seq[T]] = {
-            remaining match {
-                case Seq() => result :+ partial
-                case head +: tail => 
-                    if (pred(head))
-                        if (partial.isEmpty) 
-                            go(result, partial, tail)
-                        else 
-                            go(result :+ partial, Seq[T](), tail)
-                    else
-                        go(result, partial :+ head, tail)
-            }
-        }
-
-        go(Seq[Seq[T]](), Seq[T](), source.toSeq)
-    }
+    import Util.splitIf
 
     def parseEntry(entry: String): Map[String, String] = 
         entry.split(raw"\s+").map { pair => 

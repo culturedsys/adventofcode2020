@@ -6,15 +6,6 @@ import org.scalatest.matchers.should.Matchers
 
 class Day4Spec extends AnyFlatSpec with Matchers {
     import Day4._
-
-    "splitIf" should "split if the predicate is true" in {
-        splitIf[Char](_ == '.', "12.34.56".iterator) shouldBe Seq("12".toSeq, "34".toSeq, "56".toSeq)
-    }
-
-    "splitIf" should "skip multiple matching" in {
-        splitIf[Char](_ == '.', "12..34".iterator) shouldBe Seq("12".toSeq, "34".toSeq)
-    }
-
     "parseEntry" should "parse all pairs" in {
         parseEntry("foo:bar baz:buzz") shouldBe Map("foo" -> "bar", "baz" -> "buzz")
     }
