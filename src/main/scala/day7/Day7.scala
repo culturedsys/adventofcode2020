@@ -10,6 +10,8 @@ import util.Util
 import cats.data.State
 import cats.instances.tailRec
 import scala.annotation.tailrec
+import cats.effect.Clock
+import java.util.concurrent.TimeUnit
 
 case class Bag(
     modifier: String,
@@ -39,22 +41,23 @@ object Day7 {
     }
 
     def countBagsContainedIn(container: Bag, rules: Map[Bag, Seq[(Int, Bag)]]): Int = {
-        def calculateSub(container: Bag): State[Map[Bag, Int], Int] = {
+        def calculateSub(container: Bag, level: Int): State[Map[Bag, Int], Int] = {
             val contents = rules.get(container).get
-            contents.traverse { case (count, bag) => go(bag).map(_ * count) }.map(_.sum)
+            contents.traverse { case (count, bag) => go(bag, level + 1).map(_ * count) }.map(_.sum)
         }
 
-        def go(container: Bag): State[Map[Bag, Int], Int] = for {
-            cache <- State.get[Map[Bag, Int]]
-            cached = cache.get(container)
+        def go(container: Bag, level: Int): State[Map[Bag, Int], Int] = for {
+            cached <- State.get[Map[Bag, Int]].map(_.get(container))
             result <- cached match {
                 case Some(value) => State.pure[Map[Bag, Int], Int](value) 
-                case _ => calculateSub(container).map(_ + 1)
+                case _ => for {
+                    result <- calculateSub(container, level).map(_ + 1)
+                    _ <- State.modify[Map[Bag, Int]](_ + (container -> result))
+                } yield result
             }
-            _ <- State.set[Map[Bag, Int]]( cache + (container -> result))
         } yield result
 
-        go(container).runA(Map()).value - 1
+        go(container, 0).runA(Map()).value - 1
     }
 
     val word = P.charsWhile1(_.isLetter)
@@ -97,7 +100,7 @@ object Part1 extends IOApp {
 object Part2 extends IOApp {
     import Day7._
     override def run(args: List[String]): IO[ExitCode] = for {
-        input <- readInput
+        input <- readInput    
         rules = input.toSeq.traverse(parse).map(_.toMap)
         result = rules.map(countBagsContainedIn(Bag("shiny", "gold"), _))
         exitcode <- Util.report(result)
