@@ -6,16 +6,18 @@ import cats.Show
 import cats.syntax._
 
 object Util {    
-    def report[T: Show](result: Option[T]): IO[ExitCode] = result match {
-        case None => IO {
-            println("Error")
+    def report[T: Show](result: Either[Any, T]): IO[ExitCode] = result match {
+        case Left(error) => IO {
+            println(error)
             ExitCode.Error
         }
-        case Some(result) => IO {
+        case Right(result) => IO {
             println(implicitly[Show[T]].show(result))
             ExitCode.Success 
         }
     }
+
+    def report[T: Show](result: Option[T]): IO[ExitCode] = report(result.toRight("Error"))
 
     def splitIf[T](pred: T => Boolean, source: Iterator[T]): Seq[Seq[T]] = {
         def go(result: Seq[Seq[T]], partial: Seq[T], remaining: Seq[T]): Seq[Seq[T]] = {
