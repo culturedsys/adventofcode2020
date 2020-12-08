@@ -41,23 +41,12 @@ object Day7 {
     }
 
     def countBagsContainedIn(container: Bag, rules: Map[Bag, Seq[(Int, Bag)]]): Int = {
-        def calculateSub(container: Bag, level: Int): State[Map[Bag, Int], Int] = {
+        def go(container: Bag): Int = {
             val contents = rules.get(container).get
-            contents.traverse { case (count, bag) => go(bag, level + 1).map(_ * count) }.map(_.sum)
+            contents.map { case (count, bag) => (go(bag) + 1) * count }.sum
         }
 
-        def go(container: Bag, level: Int): State[Map[Bag, Int], Int] = for {
-            cached <- State.get[Map[Bag, Int]].map(_.get(container))
-            result <- cached match {
-                case Some(value) => State.pure[Map[Bag, Int], Int](value) 
-                case _ => for {
-                    result <- calculateSub(container, level).map(_ + 1)
-                    _ <- State.modify[Map[Bag, Int]](_ + (container -> result))
-                } yield result
-            }
-        } yield result
-
-        go(container, 0).runA(Map()).value - 1
+        go(container)
     }
 
     val word = P.charsWhile1(_.isLetter)
