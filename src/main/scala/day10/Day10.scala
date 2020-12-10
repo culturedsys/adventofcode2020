@@ -12,11 +12,11 @@ import cats.Show
 
 
 object Day10 {
-    def countGaps(seq: Seq[Int]): Map[Int, Int] =
-        seq.sorted
-            .scanLeft((0, 0))((acc, right) => acc match { case (_, left) => (right - left, right) })
-            .tail
-            .groupMapReduce(_._1)(_ => 1)(_ + _)
+    def countGaps(seq: Seq[Int]): Map[Int, Int] = {
+        val sorted = seq.sorted.view
+        (0 +: sorted).zip(sorted)
+            .groupMapReduce { case (first, second) => second - first } (_ => 1)(_ + _)
+    }
 
     def productOfGaps(seq: Seq[Int]): Option[Int] = {
         val gaps = countGaps(seq)
@@ -62,7 +62,7 @@ object Part1 extends IOApp {
         exitcode <- Util.execute { numbers.flatMap(productOfGaps(_)) }
     } yield exitcode
 }
-
+ 
 object Part2 extends IOApp {
     import Day10._
     
