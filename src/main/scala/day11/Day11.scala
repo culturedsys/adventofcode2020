@@ -30,16 +30,45 @@ case class Field(width: Int, height: Int, squares: Vector[Square]) {
 
     def countOccupied = squares.count(_ == Occupied)
 
-    def evolveState: Field = {
+    def adjacentRule(x: Int, y: Int): Square = {
+        val current = this(x, y).get
+        current match {
+            case Floor => Floor
+            case Occupied => if (countAdjacent(x, y) >= 4) Empty else Occupied
+            case Empty => if (countAdjacent(x, y) == 0) Occupied else Empty
+        }
+    }
+
+    def findFirstOnVector(x: Int, y: Int, dx: Int, dy: Int): Option[Square] = {
+        val path = Stream.iterate((x, y)) { case (x, y) => (x + dx, y + dy) }
+        path.tail.map(p => this(p._1, p._2))
+            .takeWhile(_.isDefined).flatten
+            .find(square => square != Floor)
+    }
+
+    def countVisible(x: Int, y: Int): Int = 
+        Seq(
+            (-1, -1),
+            (0, -1),
+            (1, -1),
+            (1, 0),
+            (1, 1),
+            (0, 1),
+            (-1, 1),
+            (-1, 0)    
+        ).map(delta => findFirstOnVector(x, y, delta._1, delta._2))
+        .count(_ == Some(Occupied)) 
+
+    def visibleRule(x: Int, y: Int): Square = 
+        this(x, y).get match {
+            case Floor => Floor
+            case Empty => if (countVisible(x, y) == 0) Occupied else Empty
+            case Occupied => if (countVisible(x, y) >= 5) Empty else Occupied
+        }
+
+    def evolveState(rule: Field => (Int, Int) => Square): Field = {
         val newSquares = (0 until height).flatMap { y =>
-            (0 until width).map { x =>
-                val current = this(x, y).get
-                current match {
-                    case Floor => Floor
-                    case Occupied => if (countAdjacent(x, y) >= 4) Empty else Occupied
-                    case Empty => if (countAdjacent(x, y) == 0) Occupied else Empty
-                }
-            }
+            (0 until width).map(x => rule(this)(x, y))
         }.toVector
         Field(width, height, newSquares)
     }
@@ -61,8 +90,8 @@ object Day11 {
         Field(width, height, squares)
     }
 
-    def findSteadyState(field: Field): Field = {
-        val evolution = Stream.iterate(field)(_.evolveState)
+    def findSteadyState(field: Field, rule: Field => (Int, Int) => Square): Field = {
+        val evolution = Stream.iterate(field)(_.evolveState(rule))
         evolution.zip(evolution.tail)
             .dropWhile { case (first, second) => first != second}
             .head._1
@@ -75,7 +104,18 @@ object Part1 extends IOApp {
     override def run(args: List[String]): IO[ExitCode] = for {
         input <- Util.readInput("day11/input.txt")
         field = parse(input)
-        steadyState = findSteadyState(field)
+        steadyState = findSteadyState(field, _.adjacentRule)
+        exitcode <- Util.execute(Some(steadyState.countOccupied))
+    } yield exitcode
+}
+
+object Part2 extends IOApp {
+    import Day11._
+    
+    override def run(args: List[String]): IO[ExitCode] = for {
+        input <- Util.readInput("day11/input.txt")
+        field = parse(input)
+        steadyState = findSteadyState(field, _.visibleRule)
         exitcode <- Util.execute(Some(steadyState.countOccupied))
     } yield exitcode
 }
