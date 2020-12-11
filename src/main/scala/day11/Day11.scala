@@ -16,28 +16,30 @@ case class Field(width: Int, height: Int, squares: Vector[Square]) {
         else
             Some(squares(x + y * width))
 
+    val adjacencies = Seq(
+        (-1, -1),
+        (0, -1),
+        (1, -1),
+        (1, 0),
+        (1, 1),
+        (0, 1),
+        (-1, 1),
+        (-1, 0)    
+    )
+
     def countAdjacent(x: Int, y: Int): Int =
-        (y - 1 to y + 1).flatMap(yy => 
-            (x - 1 to x + 1).map( xx => 
-                if (x == xx && y == yy) 
-                    0 
-                else if (this(xx, yy).getOrElse(Floor) != Occupied)
-                    0
-                else
-                    1
-            )
-        ).sum
+        adjacencies.count { case (dx, dy) =>
+            this(x + dx, y + dy) == Some(Occupied)
+        }
 
     def countOccupied = squares.count(_ == Occupied)
 
-    def adjacentRule(x: Int, y: Int): Square = {
-        val current = this(x, y).get
-        current match {
+    def adjacentRule(x: Int, y: Int): Square = 
+        this(x, y).get match {
             case Floor => Floor
             case Occupied => if (countAdjacent(x, y) >= 4) Empty else Occupied
             case Empty => if (countAdjacent(x, y) == 0) Occupied else Empty
         }
-    }
 
     def findFirstOnVector(x: Int, y: Int, dx: Int, dy: Int): Option[Square] = {
         val path = Stream.iterate((x, y)) { case (x, y) => (x + dx, y + dy) }
@@ -47,17 +49,8 @@ case class Field(width: Int, height: Int, squares: Vector[Square]) {
     }
 
     def countVisible(x: Int, y: Int): Int = 
-        Seq(
-            (-1, -1),
-            (0, -1),
-            (1, -1),
-            (1, 0),
-            (1, 1),
-            (0, 1),
-            (-1, 1),
-            (-1, 0)    
-        ).map(delta => findFirstOnVector(x, y, delta._1, delta._2))
-        .count(_ == Some(Occupied)) 
+        adjacencies.map { case (dx, dy) => findFirstOnVector(x, y, dx, dy) }
+            .count(_ == Some(Occupied)) 
 
     def visibleRule(x: Int, y: Int): Square = 
         this(x, y).get match {
@@ -70,13 +63,13 @@ case class Field(width: Int, height: Int, squares: Vector[Square]) {
         val newSquares = (0 until height).flatMap { y =>
             (0 until width).map(x => rule(this)(x, y))
         }.toVector
-        Field(width, height, newSquares)
+        copy(squares = newSquares)
     }
 }
 
 object Day11 {
     def parse(lines: Iterator[String]): Field = {
-        val (width, height, squares) = lines.foldLeft(0, 0, Vector[Square]())((acc, line) => {
+        val (width, height, squares) = lines.foldLeft(0, 0, Vector[Square]()){ (acc, line) => 
             val (width, height, squares) = acc
             val newSquares = squares ++ line.map[Square]({
                 case '#' => Occupied
@@ -85,7 +78,7 @@ object Day11 {
             }).toVector
             val newWidth = math.max(width, line.length)
             (newWidth, height + 1, newSquares)
-        })
+        }
 
         Field(width, height, squares)
     }
