@@ -6,20 +6,34 @@ import util.Util
 import cats.implicits._
 import cats.syntax._
 
-final case class Boat(
+final case class Point(
     x: Double,
-    y: Double,
-    heading: Double,
-    waypointx: Double = 0,
-    waypointy: Double = 0
+    y: Double
 ) {
-    def rotateWaypoint(theta: Int): Boat = 
-        (if (theta < 0 ) 360 + theta else theta) match {
-            case 90 => copy(waypointx = -waypointy, waypointy = waypointx)
-            case 180 => copy(waypointx = -waypointx, waypointy = -waypointy)
-            case 270 => copy(waypointx = waypointy, waypointy = -waypointx)
-        }
+    def + (delta: Vector) = Point(x + delta.dx, y + delta.dy)
+}
+
+final case class Vector(
+    dx: Double,
+    dy: Double
+) {
+    def + (other: Vector) = Vector(dx + other.dx, dy + other.dy)
+
+    def * (multiple: Double) = Vector(dx * multiple, dy * multiple)
+
+    lazy val magnitude: Double = math.sqrt(dx * dx + dy * dy)
+    lazy val angle: Double = math.atan2(dy, dx)
+
+    def rotate(theta: Double) = 
+        Vector(math.cos(angle + theta) * magnitude, math.sin(angle + theta) * magnitude)
     
+}
+
+final case class Boat(
+    location: Point,
+    heading: Vector
+) {
+    def move(vector: Vector) = copy(location = location + vector)
 }
 
 sealed trait Instruction
@@ -34,32 +48,28 @@ final case class F(value: Int) extends Instruction
 
 object Day12 {
     def followPath(path: Seq[Instruction]): Boat =
-        path.foldLeft(Boat(0, 0, 0)) { (boat, instruction) =>
+        path.foldLeft(Boat(Point(0, 0), Vector(1, 0))) { (boat, instruction) =>
             instruction match {
-                case N(v) => boat.copy(y = boat.y + v)
-                case S(v) => boat.copy(y = boat.y - v)
-                case E(v) => boat.copy(x = boat.x + v)
-                case W(v) => boat.copy(x = boat.x - v)
-                case L(v) => boat.copy(heading = boat.heading + v)
-                case R(v) => boat.copy(heading = boat.heading - v)
-                case F(v) => 
-                    boat.copy(x = boat.x + v * math.cos(boat.heading.toRadians), 
-                        y = boat.y + v * math.sin(boat.heading.toRadians))
+                case N(v) => boat.move(Vector(0, v))
+                case S(v) => boat.move(Vector(0, -v))
+                case E(v) => boat.move(Vector(v, 0))
+                case W(v) => boat.move(Vector(-v, 0))
+                case L(v) => boat.copy(heading = boat.heading.rotate(v.toRadians))
+                case R(v) => boat.copy(heading = boat.heading.rotate(-v.toRadians))
+                case F(v) => boat.move(boat.heading * v)
             }
         }
 
     def followPathWithWaypoint(path: Seq[Instruction]): Boat =
-        path.foldLeft(Boat(0, 0, 0, 10, 1)) { (boat, instruction) => { 
+        path.foldLeft(Boat(Point(0, 0), Vector(10, 1))) { (boat, instruction) => { 
             instruction match {
-                case N(v) => boat.copy(waypointy = boat.waypointy + v)
-                case S(v) => boat.copy(waypointy = boat.waypointy - v)
-                case E(v) => boat.copy(waypointx = boat.waypointx + v)
-                case W(v) => boat.copy(waypointx = boat.waypointx - v)
-                case L(v) => boat.rotateWaypoint(v)
-                case R(v) => boat.rotateWaypoint(-v)
-                case F(v) => 
-                    boat.copy(x = boat.x + boat.waypointx * v, 
-                        y = boat.y + boat.waypointy * v)
+                case N(v) => boat.copy(heading = boat.heading + Vector(0, v))
+                case S(v) => boat.copy(heading = boat.heading + Vector(0, -v))
+                case E(v) => boat.copy(heading = boat.heading + Vector(v, 0))
+                case W(v) => boat.copy(heading = boat.heading + Vector(-v, 0))
+                case L(v) => boat.copy(heading = boat.heading.rotate(v.toRadians))
+                case R(v) => boat.copy(heading = boat.heading.rotate(-v.toRadians))
+                case F(v) => boat.move(boat.heading * v)
             }}
         }
 
@@ -84,7 +94,7 @@ object Part1 extends IOApp {
         input <- Util.readInput("day12/input.txt")
         instructions = input.toSeq.traverse(parse)
         exitcode <- Util.execute(instructions.map(followPath)
-            .map(boat => (math.abs(boat.x) + math.abs(boat.y)).toInt))
+            .map(boat => (math.abs(boat.location.x) + math.abs(boat.location.y)).toInt))
     } yield exitcode
 }
 
@@ -95,6 +105,6 @@ object Part2 extends IOApp {
         input <- Util.readInput("day12/input.txt")
         instructions = input.toSeq.traverse(parse)
         exitcode <- Util.execute(instructions.map(followPathWithWaypoint)
-            .map(boat => (math.abs(boat.x) + math.abs(boat.y)).toInt))
+            .map(boat => (math.abs(boat.location.x) + math.abs(boat.location.y)).round))
     } yield exitcode
 }
