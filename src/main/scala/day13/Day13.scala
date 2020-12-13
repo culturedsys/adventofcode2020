@@ -15,6 +15,15 @@ object Day13 {
     def multiples(base: Int): Stream[Long] = 
         Stream.from(1).map(_ * base)
 
+    def gcd(a: Long, b: Long): Long =
+        if (b == 0)
+            a
+        else 
+            gcd(b, a % b)
+
+    def lcm(a: Long, b: Long): Long =
+        (a * b) / gcd(a, b)
+
     def findMatching(constraintsWithOptions: Seq[(Option[Int], Int)]): Long = {
         val constraints = constraintsWithOptions.flatMap {
             case (None, _) => Seq()
@@ -30,11 +39,11 @@ object Day13 {
             val matching = constraints.filter {
                 case (base, offset) => (candidate + offset) % base == 0 
             }
-            
+
             if (matching.length == constraints.length)
                 candidate
             else if (matching.filter(c => !matched.contains(c._1)).length > 0) {
-                val step = matching.map[Long](_._1).reduce(_ * _)
+                val step = matching.map[Long](_._1).reduce(lcm)
                 go(multiplesAfter(step, candidate), matching.map(_._1))
             } else
                 go(candidates, matched)
