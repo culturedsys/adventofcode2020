@@ -6,7 +6,8 @@ import cats.data.NonEmptyList
 
 class Day16Spec extends AnyFlatSpec with Matchers {
     import Day16._
-
+    import Parser._
+    
     "invalidValues" should "give the correct answer for example" in {
         invalidValues(
             Seq(
@@ -80,25 +81,6 @@ class Day16Spec extends AnyFlatSpec with Matchers {
                 Ticket(Seq(38, 6, 12))
             )
         )
-    }
-
-    // "matchingRules" should "match rules" in {
-    //     val rules =  Seq(
-    //         Rule("class", Seq(0 to 1, 4 to 19)),
-    //         Rule("row", Seq(0 to 5, 8 to 19)),
-    //         Rule("seat", Seq(, 16 to 19))
-    //     )
-    //     matchingRules(rules, Ticket(Seq()))
-    // }
-
-    "expand" should "expand correctly" in {
-        expand(List(List(1), List(2, 3), List(4, 5))) shouldBe
-            List(
-                List(1, 2, 4),
-                List(1, 2, 5),
-                List(1, 3, 4),
-                List(1, 3, 5)
-            )
     }
 
     "matchFields" should "match fields in example" in {

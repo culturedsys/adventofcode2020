@@ -22,7 +22,10 @@ object Util {
 
     def report[T: Show](result: Option[T]): IO[ExitCode] = report(result.toRight("Error"))
 
-    def execute[A: Show](f: => Option[A])(implicit clock: Clock[IO]): IO[ExitCode] = for {
+    def execute[A: Show](f: => Option[A])(implicit clock: Clock[IO]): IO[ExitCode] = 
+        executeEither(f.toRight("Error"))
+
+    def executeEither[A: Show](f: => Either[Any, A])(implicit clock: Clock[IO]): IO[ExitCode] = for {
         start <- clock.monotonic(TimeUnit.MILLISECONDS)
         result = f
         end <- clock.monotonic(TimeUnit.MILLISECONDS)
