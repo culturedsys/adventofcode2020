@@ -47,23 +47,21 @@ class Day16Spec extends AnyFlatSpec with Matchers {
         yourTicketSep.parseAll("your ticket:") shouldBe Right(())
     }
 
+    val example =
+        """class: 1-3 or 5-7
+            |row: 6-11 or 33-44
+            |seat: 13-40 or 45-50
+            |
+            |your ticket:
+            |7,1,14
+            |
+            |nearby tickets:
+            |7,3,47
+            |40,4,50
+            |55,2,20
+            |38,6,12""".stripMargin
+    
     "parse" should "correctly parse all notes" in {
-        val example =
-            """class: 1-3 or 5-7
-              |row: 6-11 or 33-44
-              |seat: 13-40 or 45-50
-              |
-              |your ticket:
-              |7,1,14
-              |
-              |nearby tickets:
-              |7,3,47
-              |40,4,50
-              |55,2,20
-              |38,6,12""".stripMargin
-
-        // example.zipWithIndex.foreach(t => println(s"<${t._1}>, ${t._2}"))
-
         val result = notes.parseAll(example)
         result.map(_._1) shouldBe Right(
             Seq(
@@ -82,5 +80,44 @@ class Day16Spec extends AnyFlatSpec with Matchers {
                 Ticket(Seq(38, 6, 12))
             )
         )
+    }
+
+    // "matchingRules" should "match rules" in {
+    //     val rules =  Seq(
+    //         Rule("class", Seq(0 to 1, 4 to 19)),
+    //         Rule("row", Seq(0 to 5, 8 to 19)),
+    //         Rule("seat", Seq(, 16 to 19))
+    //     )
+    //     matchingRules(rules, Ticket(Seq()))
+    // }
+
+    "expand" should "expand correctly" in {
+        expand(List(List(1), List(2, 3), List(4, 5))) shouldBe
+            List(
+                List(1, 2, 4),
+                List(1, 2, 5),
+                List(1, 3, 4),
+                List(1, 3, 5)
+            )
+    }
+
+    "matchFields" should "match fields in example" in {
+        val example = 
+        """class: 0-1 or 4-19
+          |row: 0-5 or 8-19
+          |seat: 0-13 or 16-19
+          |
+          |your ticket:
+          |11,12,13
+          |
+          |nearby tickets:
+          |3,9,18
+          |15,1,5
+          |5,14,9""".stripMargin
+
+        notes.parseAll(example).map { input =>
+            matchFields(input._1, input._3)
+        }  shouldBe Right(Map("class" -> 1, "row" -> 0, "seat" -> 2))
+
     }
 }

@@ -21,6 +21,35 @@ object Day16 {
     def invalidValues(rules: Seq[Rule], tickets: Seq[Ticket]) =
         tickets.flatMap(_.values.filter(value => !rules.exists(_.valid(value))))
 
+    def matchingRules(rules: Seq[Rule], ticket: Ticket): Seq[Set[Rule]] = 
+        ticket.values.map(value => rules.filter(_.valid(value)).toSet)
+
+    def intersectMany[A](lefts: Seq[Set[A]], rights: Seq[Set[A]]): Seq[Set[A]] =
+        lefts.zip(rights).map { case (left, right) => left.intersect(right) }
+
+    def expand[T](l: List[List[T]]): List[List[T]] = l match {
+        case Nil => List(Nil)
+        case head :: tail => head.flatMap(h => expand(tail).map(h :: _))
+    }
+        
+    def uniqueMatches(s: Seq[Set[String]]):Seq[String] = {
+        val singulars = s.filter(_.size == 1)
+        if (singulars.length == s.length) s.map(_.head)
+        else uniqueMatches(s.map { c =>
+            if (singulars.contains(c)) c
+            else singulars.foldLeft(c)((x, y) => x.diff(y))
+        }) 
+    }
+
+    def matchFields(rules: Seq[Rule], tickets: Seq[Ticket]): Map[String, Int] = {       
+        val matchSets = tickets.map(ticket => matchingRules(rules, ticket))
+            .filter(!_.exists(_.isEmpty))
+            .reduce((left, right) => intersectMany(left, right))
+            .map(_.map(_.name))
+
+        uniqueMatches(matchSets).zipWithIndex.toMap
+    }
+
     val number = P.charsWhile1(_.isDigit).map(_.toInt)
     val whitespace = P.charWhere(_.isSpaceChar).rep1.void
     val eol = P.char('\n').void
@@ -62,6 +91,25 @@ object Part1 extends IOApp {
         }}
         exitcode <- Util.execute(parsed.map {
             case (rules, _, tickets) => invalidValues(rules, tickets).sum
+        }.toOption)
+    } yield ExitCode.Error
+
+
+}
+
+object Part2 extends IOApp {
+    import Day16._ 
+ 
+    override def run(args: List[String]): IO[ExitCode] = for {
+        input <- IO { Source.fromResource("day16/input.txt").mkString }
+        parsed = notes.parseAll(input)
+        exitcode <- Util.execute(parsed.map {
+            case (rules, myticket, tickets) => {
+                val map = matchFields(rules, tickets)
+                map.filter { case (k, v) => k.startsWith("departure")}
+                    .values.map(i => myticket.values(i).toLong)
+                    .product
+            }
         }.toOption)
     } yield ExitCode.Error
 
