@@ -5,6 +5,10 @@ import cats.effect.IOApp
 import cats.effect.{ExitCode, IO}
 import scala.io.Source
 import util.Util
+import cats.parse.{Parser => P, Parser1}
+import cats.syntax._
+import cats.implicits._
+import cats.Alternative
 
 sealed trait Token
 final case class Val(value: Long) extends Token
@@ -15,6 +19,44 @@ case object Plus extends Op
 case object Mul extends Op
 
 final case class State(acc: Long, op: Option[Op])
+
+sealed trait Expression
+final case class Literal(value: Long) extends Expression
+final case class MulExpression(left: Expression, right: Expression) extends Expression
+final case class SumExpression(left: Expression, right: Expression) extends Expression
+
+object Parser {
+    val whitespace = P.charWhere(_.isWhitespace).rep.void
+
+    lazy val expression: Parser1[Expression] = {
+        val multiplication: Parser1[Expression] = for {
+            left <- sumExp
+            _ <- whitespace ~ P.char('*') ~ whitespace
+            right <- expression
+        } yield MulExpression(left, right)
+
+        multiplication.backtrack <+> sumExp.backtrack
+    }
+
+    lazy val sumExp: Parser1[Expression] = {
+        val sum: Parser1[Expression] = for {
+            left <- terminal
+            _ <- whitespace ~ P.char('+') ~ whitespace
+            right <- sumExp
+        } yield SumExpression(left, right)
+
+        sum.backtrack <+> terminal.backtrack
+    }
+
+    lazy val terminal: Parser1[Expression] = literal.backtrack <+> parenthetical.backtrack
+
+    val literal: Parser1[Expression] = P.charsWhile1(_.isDigit).map(digits => Literal(digits.toLong))
+    val parenthetical = for {
+        _ <- P.char('(') ~ whitespace
+        body <- expression
+        _ <- whitespace ~ P.char(')')
+    } yield body
+}
 
 object Day18 {
 
@@ -35,6 +77,12 @@ object Day18 {
             }
         }
     }.head.acc
+
+    def evaluate(expression: Expression): Long = expression match {
+        case Literal(value) => value
+        case MulExpression(left, right) => evaluate(left) * evaluate(right)
+        case SumExpression(left, right) => evaluate(left) + evaluate(right)
+    }
 
     val digit = raw"([0-9])".r
     
@@ -63,5 +111,17 @@ object Part1 extends IOApp {
         input <- Util.readInput("day18/input.txt")
         expressions = input.map(line => tokenize(line.iterator))
         exitcode <- Util.execute(Some(expressions.map(evaluate).sum))
+    } yield exitcode
+}
+
+object Part2 extends IOApp {
+    import Day18._
+
+    override def run(args: List[String]): IO[ExitCode] = for {
+        input <- Util.readInput("day18/input.txt")
+        parsed = input.toSeq.traverse(line => Parser.expression.parseAll(line))
+        exitcode <- Util.executeEither {
+            parsed.map(_.map(evaluate).sum)
+        }
     } yield ExitCode.Error
 }

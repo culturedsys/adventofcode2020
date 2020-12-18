@@ -28,4 +28,14 @@ class Day18Spec extends AnyFlatSpec with Matchers {
     "evaluate" should "give correct answer for longer example" in {
         evaluate(tokenize("((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2".iterator)) shouldBe 13632
     }
+
+    "Parser.expression" should "parse an expression" in {
+        Parser.expression.parseAll("1 + 2 * 3") shouldBe 
+            Right(MulExpression(SumExpression(Literal(1), Literal(2)), Literal(3)))
+    }
+
+    it should "parse an expression with brackets" in {
+        Parser.expression.parseAll("1 + (2 * 3)") shouldBe 
+            Right(SumExpression(Literal(1), MulExpression(Literal(2), Literal(3))))
+    }
 }
