@@ -65,15 +65,18 @@ object Day18 {
         case (Mul, left, right) => left * right
     }
 
+    def evaluateOrRight(op: Option[Op], left: Long, right: Long): Long =
+        op.map(evaluate(_, left, right)).getOrElse(right)
+
     def evaluate(expr: Seq[Token]): Long = expr.foldLeft(Seq(State(0, None))) { (states, next) =>
         val State(acc, op) = states.head
         next match {
-            case Val(v) => State(op.map(evaluate(_, acc, v)).getOrElse(v), None) +: states.tail
+            case Val(v) => State(evaluateOrRight(op, acc, v), None) +: states.tail
             case op : Op => State(acc, Some(op)) +: states.tail
             case LParen => State(0, None) +: states
             case RParen => {
                 val State(oldAcc, oldOp) = states.tail.head
-                State(oldOp.map(evaluate(_, oldAcc, acc)).getOrElse(acc), None) +: states.tail.tail
+                State(evaluateOrRight(oldOp, oldAcc, acc), None) +: states.tail.tail
             }
         }
     }.head.acc
