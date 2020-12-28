@@ -6,6 +6,7 @@ import cats.effect.{ExitCode, IO}
 import util.Util
 import cats.implicits._
 import cats.syntax._
+import scala.annotation.tailrec
 
 final case class I(name: String)
 final case class A(name: String)
@@ -13,41 +14,47 @@ final case class A(name: String)
 object Day21 {
     final case class State(ingredients: Set[I] = Set(), ingredientsForAllergens: Map[A, Set[I]] = Map())
 
+    def mergeBy[A, B](m1: Map[A, B], m2: Map[A, B])(reducer: (B, B) => B) =
+        (m1.toSeq ++ m2).groupMapReduce(_._1)(_._2)(reducer)
+
+
+    @tailrec
+    def ensureUniqueValues[A, B](m: Map[A, Set[B]]): Map[A, Set[B]] = {
+        val (singletons, multiples) = m.partition { case (_, ingredients) => ingredients.size == 1 }
+
+        if (multiples.isEmpty)
+            singletons
+        else {
+            val withoutSingletons = singletons.values.foldLeft(multiples) { (acc, singleton) =>
+                acc.view.mapValues(_ -- singleton).toMap
+            }
+            ensureUniqueValues(singletons ++ withoutSingletons)
+        }
+    }
+
     def identifyAllergens(input: Seq[(Set[I], Set[A])]): Map[I, Option[A]] ={
-        val s = input.foldLeft(State()) { (state, line) =>
-            val (ingredients, allergens) = line
-            val updatedIngredientsForAllergens = allergens.foldLeft(state.ingredientsForAllergens) { (iForA, allergen) =>
-                iForA.updatedWith(allergen)(oldIngredients => oldIngredients.map(_.intersect(ingredients)).orElse(Some(ingredients)))
-            }
+        val ingredients: Set[I] = input.map(_._1).reduce(_.union(_))
 
-            State(state.ingredients ++ ingredients, updatedIngredientsForAllergens)
+        val allergenToIngredients: Map[A, Set[I]] = input.map { 
+            case (ingredients, allergens) => allergens.map((_, ingredients)).toMap
+        }.foldLeft(Map[A, Set[I]]()) { (acc, map) =>
+            mergeBy(acc, map)(_.intersect(_))
         }
 
-        def removeFound(iForA: Map[A, Set[I]]): Map[A, Set[I]] = {
-            val (singletons, multiples) = iForA.partition(_._2.size == 1)
+        val result = ensureUniqueValues(allergenToIngredients)
 
-            if (multiples.isEmpty)
-                singletons
-            else {
-                val filtered = singletons.foldLeft(multiples) { (acc, s) =>
-                    acc.map(t => (t._1, t._2 - s._2.head))
-                }
-                removeFound(singletons ++ filtered)
-            }
-        }
-
-        val result = removeFound(s.ingredientsForAllergens)
-
-        s.ingredients.map { i =>
+        ingredients.map { i =>
             (i, result.find { case (_, is) => is == Set(i) }.map(_._1))
         }.toMap
     }
 
     val whitespace = P.charsWhile1(_.isWhitespace).void
+    val commaSep = P.char(',') ~ whitespace
     val ingredient = P.charsWhile1(_.isLetter).map(I)
+    val ingredients = P.rep1Sep(ingredient, 1, whitespace)
     val allergen = P.charsWhile1(_.isLetter).map(A)
-    val allergens = ((P.string("(contains") ~ whitespace).with1 *> P.rep1Sep(allergen, 1, P.char(',') ~ whitespace)) <* P.char(')') 
-    val food = P.rep1Sep(ingredient, 1, whitespace) ~ (whitespace *> allergens)
+    val allergens = ((P.string("(contains") ~ whitespace).with1 *> P.rep1Sep(allergen, 1, commaSep)) <* P.char(')')
+    val food = ingredients ~ (whitespace *> allergens)
 
     def parse(input: String) = 
         food.parseAll(input)
